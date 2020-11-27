@@ -1,9 +1,11 @@
 import Phaser from 'phaser'
 import ScoreLabel from '../ui/ScoreLabel'
+import BombSpawner from './BombSpawner'
 
 const GROUND_KEY =  'ground'
 const DUDE_KEY = 'dude'
 const STAR_KEY = 'star'
+const BOMB_KEY = 'bomb'
 
 export default class GameScene extends Phaser.Scene
 {
@@ -13,6 +15,10 @@ export default class GameScene extends Phaser.Scene
         this.player = undefined
         this.cursors = undefined
         this.scoreLabel = undefined
+        this.stars = undefined
+        this.bombSpawner = undefined
+
+        this.gameOver = false
 	}
 
 	preload()
@@ -20,7 +26,7 @@ export default class GameScene extends Phaser.Scene
         this.load.image('sky', 'assets/sky.png')
 		this.load.image( GROUND_KEY, 'assets/platform.png')
 		this.load.image( STAR_KEY, 'assets/star.png')
-		this.load.image('bomb', 'assets/bomb.png')
+		this.load.image( BOMB_KEY, 'assets/bomb.png')
 
 		this.load.spritesheet('dude', 
 			'assets/dude.png',
@@ -40,22 +46,36 @@ export default class GameScene extends Phaser.Scene
         this.physics.add.collider(this.player, platforms)
 
         //create stars to collect and add collider
-        const stars = this.createStars()
-        this.physics.add.collider(stars, platforms)
+        this.stars = this.createStars()
+        this.physics.add.collider(this.stars, platforms)
 
         //detect overlap between player and stars
-        this.physics.add.overlap(this.player, stars, this.collectStar, null, this)
+        this.physics.add.overlap(this.player, this.stars, this.collectStar, null, this)
 
         //add key binds
         this.cursors = this.input.keyboard.createCursorKeys()
 
         //add score
         this.scoreLabel = this.createScoreLabel(16,16,0)
+
+        //BOMBS AWAY!!
+        this.bombSpawner = new BombSpawner(this, BOMB_KEY)
+        const bombsGroup = this.bombSpawner.group
+        this.physics.add.collider(bombsGroup, platforms)
+
+        //add collider between player and bombs
+        //call hitBomb function when it happens
+        this.physics.add.collider(this.player, bombsGroup, this.hitBomb, null, this)
     }
 
     update()
 	{
-		if (this.cursors.left.isDown)
+        //check for game over
+        if (this.gameOver){
+            return
+        }
+        
+        if (this.cursors.left.isDown)
 		{
 			this.player.setVelocityX(-160)
 
@@ -145,6 +165,17 @@ export default class GameScene extends Phaser.Scene
         star.disableBody(true, true)
         //add 10 pts
         this.scoreLabel.add(10)
+
+        //if there are no more stars
+        if (this.stars.countActive(true) === 0)
+		{
+			//  A new batch of stars to collect
+			this.stars.children.iterate((child) => {
+				child.enableBody(true, child.x, 0, true, true)
+			})
+		}
+        //THROW A BOMB!!
+		this.bombSpawner.spawn(player.x)
     }
     
     createScoreLabel(x, y, score)
@@ -155,5 +186,16 @@ export default class GameScene extends Phaser.Scene
 		this.add.existing(label)
 
 		return label
-	}
+    }
+    
+    hitBomb(player, bomb)
+    {
+        //pause movement
+        this.physics.pause()
+        //death animation
+        player.setTint(0xff0000)
+		player.anims.play('turn')
+        //game over
+		this.gameOver = true
+    }
 }
