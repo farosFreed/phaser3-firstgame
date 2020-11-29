@@ -19,6 +19,11 @@ export default class GameScene extends Phaser.Scene
         this.bombSpawner = undefined
 
         this.gameOver = false
+
+        this.paused = false
+        this.pauseLabel = undefined
+        this.menu = undefined
+        this.pointer = undefined
 	}
 
 	preload()
@@ -31,13 +36,17 @@ export default class GameScene extends Phaser.Scene
 		this.load.spritesheet('dude', 
 			'assets/dude.png',
 			{ frameWidth: 32, frameHeight: 48 }
-		)
+        )
+        
+        this.load.spritesheet('menu', 
+            'assets/number-buttons.png',
+            { frameWidth: 480, frameHeight: 317 }
+            ) 
     }
 
     create()
     {
         this.add.image(400, 300, 'sky')
-        //this.add.image(400, 300, 'star')
         
         //create player and platforms
         //then add collisions between the 2 so we can stand on platforms
@@ -66,10 +75,105 @@ export default class GameScene extends Phaser.Scene
         //add collider between player and bombs
         //call hitBomb function when it happens
         this.physics.add.collider(this.player, bombsGroup, this.hitBomb, null, this)
+
+        //PAUSE MENU
+        // Create a label to use as a button
+        const w = 800, h = 600;
+
+        this.pauseLabel = this.add.text(w - 100, 20, 'Pause', { font: '24px Arial', fill: '#fff' });
+        /* deprecated way to make clickable
+        this.pauseLabel.inputEnabled = true;
+        this.pauseLabel.events.onInputUp.add(function () {
+            // When the pause button is pressed, we pause the game
+            this.paused = true;
+    
+            // Then add the menu
+            menu = this.add.sprite(w/2, h/2, 'menu');
+            menu.anchor.setTo(0.5, 0.5);
+    
+            // And a label to illustrate which menu item was chosen. (This is not necessary)
+            //choiseLabel = this.add.text(w/2, h-150, 'Click outside menu to continue', { font: '30px Arial', fill: '#fff' });
+            //choiseLabel.anchor.setTo(0.5, 0.5);
+            });
+        */
+       /* Phaser 3 clickable function using the new InputPlugin
+       https://photonstorm.github.io/phaser3-docs/Phaser.Input.InputPlugin.html
+       */
+       this.pauseLabel.setInteractive();
+       this.pauseLabel.on('pointerdown', () => {
+           //set menu visible
+           if(this.paused){
+            this.menu.setVisible(false)
+            this.paused = false
+           } else {
+            this.menu.setVisible(true)
+            this.paused = true
+           }
+           //this.menu.setVisible(true)
+           // When the pause button is pressed, we pause the game
+           //this.scene.pause()
+           //this.paused = true;
+       });
+
+
+       this.menu = this.createPauseMenu()
+       this.menu.setVisible(false)
+
+ 
+        //create pointer
+        this.pointer = this.input.activePointer
+
+        /*
+        // And finally the method that handels the pause menu
+        //function unpause(event) {
+        const unpause = (event) => {
+            console.log('tets')
+         // Only act if paused
+         if(this.scene.isPaused){
+            // Calculate the corners of the menu
+             var x1 = w/2 - 270/2, x2 = w/2 + 270/2,
+                 y1 = h/2 - 180/2, y2 = h/2 + 180/2;
+ 
+             // Check if the click was inside the menu
+             if(event.x > x1 && event.x < x2 && event.y > y1 && event.y < y2 ){
+                 // The choicemap is an array that will help us see which item was clicked
+                 //var choisemap = ['one', 'two', 'three', 'four', 'five', 'six'];
+ 
+                 // Get menu local coordinates for the click
+                 var x = event.x - x1,
+                     y = event.y - y1;
+ 
+                 // Calculate the choice 
+                 var choise = Math.floor(x / 90) + 3*Math.floor(y / 90);
+ 
+                 // Display the choice
+                 //choiseLabel.text = 'You chose menu item: ' + choisemap[choise];
+             }
+             else { 
+                 // Remove the menu and the label
+                 this.menu.destroy();
+                 //choiseLabel.destroy();
+ 
+                 // Unpause the game
+                 //this.paused = false;
+                 this.scene.resume()
+                 this.menu.setVisible(false)
+             }
+         }
+
+         // Add a input listener that can help us return from being paused
+        //this.input.onDown.add(unpause, self);
+        //this.input.on('pointerdown', () => console.log('click'));
+        }; */
     }
 
     update()
 	{
+        //check for pause
+        if (this.paused) {
+            return
+        }
+        
         //check for game over
         if (this.gameOver){
             return
@@ -197,5 +301,24 @@ export default class GameScene extends Phaser.Scene
 		player.anims.play('turn')
         //game over
 		this.gameOver = true
+    }
+
+    createPauseMenu() {
+        // Then add the menu
+        //WILL NOT WORK this.physics doesn't have scope? but it works in stars!
+        //const menu = this.physics.add.sprite(100, 450, 'menu');
+
+        //add a static group or our menu will fall off screen
+        const menu = this.physics.add.staticGroup()
+        //this.physics.add.staticGroup()
+        //then add sprite art
+        menu.create(400, 200, 'menu')
+        //menu.anchor.setTo(0.5, 0.5);
+        //this.add.existing(menu)
+        return menu
+
+        // And a label to illustrate which menu item was chosen. (This is not necessary)
+        //choiseLabel = this.add.text(w/2, h-150, 'Click outside menu to continue', { font: '30px Arial', fill: '#fff' });
+        //choiseLabel.anchor.setTo(0.5, 0.5);
     }
 }
